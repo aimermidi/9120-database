@@ -96,12 +96,12 @@ INSERT INTO Admission (AdmissionType, Department, Fee, Patient, Administrator, D
 CREATE OR REPLACE FUNCTION get_admissions_by_admin(admin_id TEXT)
 RETURNS TABLE (
     admissionid INT,
-    admissiontypename TEXT,
-    deptname TEXT,
+    admissiontypename VARCHAR(20),
+    deptname VARCHAR(20),
     dischargedate TEXT,
     fee TEXT,
     fullname TEXT,
-    condition TEXT
+    "condition" VARCHAR(500)
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -111,7 +111,7 @@ BEGIN
         COALESCE(TO_CHAR(a.dischargedate, 'DD-MM-YYYY'),'') as dischargedate,
         COALESCE(a.fee :: TEXT, '') AS fee,
         CONCAT(p.firstname, ' ', p.lastname) as fullname,
-        COALESCE(a.condition, '') as condition
+        COALESCE(a.condition, '') as "condition"
     FROM admission a 
     INNER JOIN patient p ON a.patient = p.patientid
     INNER JOIN admissiontype at ON a.admissiontype = at.admissiontypeid
@@ -120,5 +120,43 @@ BEGIN
     ORDER BY a.dischargedate DESC NULLS LAST,
         CONCAT(p.firstname, ' ', p.lastname) ASC,
         at.admissiontypename DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+--  Finding Admissions function
+CREATE OR REPLACE FUNCTION find_admissions(keyword TEXT)
+RETURNS TABLE(
+    admissionid INT,
+    admissiontypename VARCHAR(20),
+    deptname VARCHAR(20),
+    dischargedate TEXT,
+    fee TEXT,
+    fullname TEXT,
+    "condition" VARCHAR(500)
+) AS $$
+BEGIN
+	RETURN QUERY 
+	SELECT a.admissionid, 
+		at.admissiontypename,
+		d.deptname,
+		COALESCE(TO_CHAR(a.dischargedate, 'DD-MM-YYYY'),'') as dischargedate,
+		COALESCE(a.fee :: TEXT, '') as fee,
+		CONCAT(p.firstname, ' ', p.lastname) as fullname,
+		COALESCE(a.condition, '') as "condition"
+    FROM admission a 
+    INNER JOIN patient p ON a.patient = p.patientid
+    INNER JOIN admissiontype at ON a.admissiontype = at.admissiontypeid
+    INNER JOIN department d ON a.department = d.deptid
+	WHERE 
+		(a.dischargedate >= CURRENT_DATE - INTERVAL '2 years' OR a.dischargedate IS NULL)
+		AND
+        (LOWER(at.admissiontypename) LIKE LOWER('%' || keyword || '%') OR 
+        LOWER(d.deptname) LIKE LOWER('%' || keyword || '%') OR 
+        LOWER(p.firstname || ' ' || p.lastname) LIKE LOWER('%' || keyword || '%') OR
+        LOWER(a.condition) LIKE LOWER('%' || keyword || '%')
+		)
+    ORDER BY 
+        a.dischargedate ASC NULLS FIRST,
+		fullname ASC;
 END;
 $$ LANGUAGE plpgsql;
