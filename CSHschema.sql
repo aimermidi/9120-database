@@ -4,6 +4,8 @@ DROP TABLE IF EXISTS AdmissionType;
 DROP TABLE IF EXISTS Department;
 DROP TABLE IF EXISTS Admission;
 
+SET datestyle = 'DMY';
+
 CREATE TABLE Administrator (
     UserName VARCHAR(10) PRIMARY KEY,
     Password VARCHAR(20) NOT NULL,
@@ -89,3 +91,34 @@ INSERT INTO Admission (AdmissionType, Department, Fee, Patient, Administrator, D
 	(4, 1, 75.00, 'gthomas', 'bbrown', '19/11/2023', 'Routine general practitioner consultation for a follow-up after a recent bout of seasonal allergies.'),
 	(3, 3, 7000.50, 'smartinez', 'jdoe', '15/10/2024', NULL),
 	(1, 2, NULL, 'etylor', 'jdoe', NULL, 'I am having intense, crushing pain in my chest that feels like an elephant is sitting on it. It is spreading to my left arm and neck.');
+
+-- Viewing admission function
+CREATE OR REPLACE FUNCTION get_admissions_by_admin(admin_id TEXT)
+RETURNS TABLE (
+    admissionid INT,
+    admissiontypename TEXT,
+    deptname TEXT,
+    dischargedate TEXT,
+    fee TEXT,
+    fullname TEXT,
+    condition TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT a.admissionid, 
+        at.admissiontypename,
+        d.deptname,
+        COALESCE(TO_CHAR(a.dischargedate, 'DD-MM-YYYY'),'') as dischargedate,
+        COALESCE(a.fee :: TEXT, '') AS fee,
+        CONCAT(p.firstname, ' ', p.lastname) as fullname,
+        COALESCE(a.condition, '') as condition
+    FROM admission a 
+    INNER JOIN patient p ON a.patient = p.patientid
+    INNER JOIN admissiontype at ON a.admissiontype = at.admissiontypeid
+    INNER JOIN department d ON a.department = d.deptid
+    WHERE a.administrator = admin_id
+    ORDER BY a.dischargedate DESC NULLS LAST,
+        CONCAT(p.firstname, ' ', p.lastname) ASC,
+        at.admissiontypename DESC;
+END;
+$$ LANGUAGE plpgsql;
