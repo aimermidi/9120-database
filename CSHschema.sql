@@ -160,3 +160,27 @@ BEGIN
 		fullname ASC;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Update Admission function
+CREATE OR REPLACE FUNCTION update_admission(
+    p_admissionid INT, 
+    p_admissiontype VARCHAR(20), 
+    p_department VARCHAR(20), 
+    p_dischargeDate DATE, 
+    p_fee TEXT, 
+    p_patient TEXT, 
+    p_condition VARCHAR(500)
+)
+RETURNS VOID AS $$
+BEGIN
+	UPDATE admission
+	SET
+		admissiontype = (SELECT admissiontypeid FROM admissiontype WHERE LOWER(admissiontypename) = LOWER(p_admissiontype)),
+		department = (SELECT deptid FROM department WHERE LOWER(deptname) = LOWER(p_department)),
+		dischargedate = p_dischargeDate,
+		fee = CASE WHEN p_fee IS NOT NULL THEN p_fee::NUMERIC ELSE NULL END,
+		patient = (SELECT patientid FROM patient WHERE LOWER(CONCAT(firstname, ' ', lastname)) LIKE LOWER('%' || p_patient || '%')),
+		"condition" = p_condition
+	WHERE admissionid = p_admissionid;
+END;
+$$ LANGUAGE plpgsql;
