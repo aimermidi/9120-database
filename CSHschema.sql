@@ -161,7 +161,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Update Admission function
+-- Update admission function
 CREATE OR REPLACE FUNCTION update_admission(
     p_admissionid INT, 
     p_admissiontype VARCHAR(20), 
