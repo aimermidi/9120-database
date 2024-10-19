@@ -91,17 +91,23 @@ def findAdmissionsByAdmin(login):
     cursor = conn.cursor()
 
     try:
-        # Call the stored procedure for fetching admissions by administrator
         cursor.callproc('get_admissions_by_admin', [login])
         rows = cursor.fetchall()
+
+        # SQL 查询的列名
+        column_names = ['admission_id', 'admission_type', 'admission_department', 'discharge_date', 'fee', 'patient', 'condition']
 
         if not rows:
             return None
 
-        attributes = [attrib[0] for attrib in cursor.description]
-        row_to_dictionary = [dict(zip(attributes, row)) for row in rows]
+        # 返回的数据字典的键名调整为与前端一致
+        row_to_dictionary = [
+            {column: (value if value is not None else ' ') for column, value in zip(column_names, row)}
+            for row in rows
+        ]
 
         return row_to_dictionary
+
 
     except psycopg2.Error as sqle:
         print("psycopg2.Error : " + sqle.pgerror)
@@ -110,7 +116,6 @@ def findAdmissionsByAdmin(login):
     finally:
         cursor.close()
         conn.close()
-
 
     
 
@@ -132,14 +137,16 @@ def findAdmissionsByCriteria(searchString):
         cursor.callproc('find_admissions', [searchString])
         rows = cursor.fetchall()
 
+        # SQL 查询列的名称，确保与前端变量名一致
+        column_names = ['admission_id', 'admission_type', 'admission_department', 'discharge_date', 'fee', 'patient', 'condition']
+
         if not rows:
             return None
 
-        attributes = [attrib[0] for attrib in cursor.description]
-        row_to_dictionary = [dict(zip(attributes, row)) for row in rows]
+        # 使用列名创建字典，确保列名与前端一致
+        row_to_dictionary = [dict(zip(column_names, row)) for row in rows]
 
         return row_to_dictionary
-
     except psycopg2.Error as sqle:
         print("psycopg2.Error : " + sqle.pgerror)
         return None
